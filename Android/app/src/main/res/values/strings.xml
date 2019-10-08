@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">AR Player</string>
+    <string name="title_activity_main_menu">AR Player</string>
+    <string name="content">Content</string>
+    <string name="enable_ar">Enable AR</string>
+    <string name="enable_debug_mode">Enable Debug Mode</string>
+    <string name="enable_dual_layer_mode">Enable Dual Layer Mode</string>
+    <string name="enable_manual_texture_upload_mode">Enable Manual Texture Upload Mode</string>
+    <string name="start_playback">Start Playback</string>
+</resources>

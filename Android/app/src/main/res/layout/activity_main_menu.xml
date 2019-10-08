@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingLeft="16dp"
+    android:paddingRight="16dp"
+    android:orientation="vertical">
+
+    <Switch
+        android:id="@+id/switchAR"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:checked="true"
+        android:padding="12sp"
+        android:text="@string/enable_ar"
+        android:textSize="16sp" />
+
+    <Switch
+        android:id="@+id/switchDebugMode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:checked="false"
+        android:padding="12sp"
+        android:text="@string/enable_debug_mode"
+        android:textSize="16sp" />
+
+    <Switch
+        android:id="@+id/switchDualLayerMode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:checked="false"
+        android:padding="12sp"
+        android:text="@string/enable_dual_layer_mode"
+        android:textSize="16sp"
+        android:visibility="invisible" />
+
+    <Switch
+        android:id="@+id/switchManualTextureUploadMode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:checked="false"
+        android:padding="12sp"
+        android:text="@string/enable_manual_texture_upload_mode"
+        android:textSize="16sp"
+        android:visibility="invisible" />
+
+    <TextView
+        android:id="@+id/textView"
+        android:textSize="16sp"
+        android:padding="12sp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/content" />
+
+    <Spinner
+        android:id="@+id/spinner"
+        android:textSize="16sp"
+        android:paddingBottom="4sp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        />
+
+    <Button
+        android:id="@+id/button4"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:onClick="onStartPlaybackClick"
+        android:padding="12sp"
+        android:text="@string/start_playback"
+        android:textSize="16sp" />
+
+</LinearLayout>
+
