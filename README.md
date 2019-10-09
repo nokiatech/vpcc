@@ -7,7 +7,7 @@ This software provides an experimental implementation for decoding and AR render
 * Demo application source code
 * Demo content
 
-Note: We currently support only TMC 6.0 version.
+Note: We currently support only TMC 6.0 version (http://mpegx.int-evry.fr/software/MPEG/PCC/TM/mpeg-pcc-tmc2/tags/release-v6.0)
 
 ## Building from source code:
 
