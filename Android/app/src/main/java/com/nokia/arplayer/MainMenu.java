@@ -53,9 +53,16 @@ public class MainMenu extends AppCompatActivity {
         intent.putExtra(MSG_ENABLE_MANUAL_TEXTURE_UPLOAD_MODE, enabledManualTextureUploadMode);
         Log.d(TAG, enabledManualTextureUploadMode ? "Manual Texture Upload Mode enabled" : "Manual Texture Upload Mode disabled");
 
-        String content = CONTENT_ROOT_PATH + ((Spinner) findViewById(R.id.spinner)).getSelectedItem().toString();
-        intent.putExtra(MSG_CONTENT, content);
-        Log.d(TAG, "Content " + content);
+        try
+        {
+            String content = CONTENT_ROOT_PATH + ((Spinner) findViewById(R.id.spinner)).getSelectedItem().toString();
+            intent.putExtra(MSG_CONTENT, content);
+            Log.d(TAG, "Content " + content);
+        }
+        catch (Exception e)
+        {
+
+        }
     }
 
     @Override

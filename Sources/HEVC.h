@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include <cstdlib>
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
+#include <cstdlib>
 
 #include <assert.h>
 
@@ -34,15 +34,17 @@
 
 #include "HEVCBitstream.h"
 
-struct DecoderParameters
-{
-    std::vector<uint8_t> vps;
-    std::vector<uint8_t> sps;
-    std::vector<uint8_t> pps;
-};
-
 namespace HEVC
 {
+    struct DecoderParameters
+    {
+        std::vector<uint8_t> vps;
+        std::vector<uint8_t> sps;
+        std::vector<uint8_t> pps;
+
+        std::vector<uint8_t> data;
+    };
+
     struct NALUnitType
     {
         enum Enum

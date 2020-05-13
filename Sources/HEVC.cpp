@@ -165,7 +165,7 @@ namespace HEVC
         {
             HEVC::NALUnit nalUnit = nalUnits.at(i);
 
-            Bitstream bitstream = Bitstream(data + nalUnit.offset , nalUnit.length);
+            Bitstream bitstream = Bitstream(data + nalUnit.offset, nalUnit.length);
 
             switch (nalUnit.type)
             {
@@ -217,9 +217,38 @@ namespace HEVC
                 case NALUnitType::NAL_UNIT_CODED_SLICE_RASL_R:
                 {
                     Slice slice;
-                    parseSlice(bitstream, slice, nalUnit.type, parserContext.pictureParameterSets, parserContext.sequenceParameterSets);
+                    bool result = parseSlice(bitstream, slice, nalUnit.type, parserContext.pictureParameterSets, parserContext.sequenceParameterSets);
 
-                    slices.push_back(slice);
+                    if (result)
+                    {
+                        slices.push_back(slice);
+
+#if 0
+
+                        static size_t previousLength = 0;
+                        static size_t previousOffset = 0;
+
+                        size_t size = 0;
+                        size_t offset = 0;
+
+                        if (previousOffset == 0)
+                        {
+                            offset = 0;
+                            size = nalUnit.offset + nalUnit.length;
+                        }
+                        else
+                        {
+                            offset = nalUnit.offset;
+                            size = ((previousOffset + previousLength) - nalUnit.offset) + nalUnit.length;
+                        }
+
+                        previousLength = nalUnit.length;
+                        previousOffset = nalUnit.offset;
+
+                        LOG_D("POC FOUND: %d, position: %lu, size: %lu", slice.slicePicOrderCntLsb, offset, size);
+
+#endif
+                    }
 
                     break;
                 }
@@ -1092,29 +1121,40 @@ namespace HEVC
         }
     }
 
+    bool isSlice(HEVC::NALUnitType::Enum type)
+    {
+        switch (type)
+        {
+            case HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_TRAIL_R:
+            case HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_TRAIL_N:
+            case HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_TSA_N:
+            case HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_TSA_R:
+            case HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_STSA_N:
+            case HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_STSA_R:
+            case HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_BLA_W_LP:
+            case HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_BLA_W_RADL:
+            case HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_BLA_N_LP:
+            case HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_IDR_W_RADL:
+            case HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_IDR_N_LP:
+            case HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_CRA:
+            case HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_RADL_N:
+            case HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_RADL_R:
+            case HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_RASL_N:
+            case HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_RASL_R:
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
     size_t findFrameEnd(size_t startIndex, std::vector<NALUnit> nalUnits)
     {
         for (size_t i = startIndex; i < nalUnits.size(); i++)
         {
             HEVC::NALUnit currentNalUnit = nalUnits.at(i);
 
-            if (currentNalUnit.type == HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_IDR_W_RADL ||
-                
-                currentNalUnit.type == HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_TRAIL_N ||
-                currentNalUnit.type == HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_TRAIL_R ||
-
-                currentNalUnit.type == HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_TSA_N ||
-                currentNalUnit.type == HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_TSA_R ||
-
-                currentNalUnit.type == HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_STSA_N ||
-                currentNalUnit.type == HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_STSA_R ||
-
-                currentNalUnit.type == HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_RADL_N ||
-                currentNalUnit.type == HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_RADL_R ||
-
-                currentNalUnit.type == HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_RASL_N ||
-                currentNalUnit.type == HEVC::NALUnitType::NAL_UNIT_CODED_SLICE_RASL_R
-               )
+            if (isSlice(currentNalUnit.type))
             {
                 if ((i + 1) < nalUnits.size())
                 {
@@ -1145,6 +1185,26 @@ namespace HEVC
     {
         std::vector<HEVC::NALUnit> nalUnits;
         HEVC::readNALUnits(data, bytes, nalUnits);
+
+        if (nalUnits.size() >= 3)
+        {
+            size_t startIndex = 0;
+
+            const HEVC::NALUnit& startNalUnit = nalUnits.at(startIndex);
+
+            size_t endIndex = HEVC::findFrameEnd(startIndex, nalUnits) - 1;
+            const HEVC::NALUnit& endNalUnit = nalUnits.at(endIndex);
+
+            size_t offset = startNalUnit.offset;
+            size_t length = (endNalUnit.offset - startNalUnit.offset) + endNalUnit.length;
+
+            std::vector<uint8_t> tmp;
+            tmp.resize(length);
+
+            memcpy(tmp.data(), data + offset, length);
+
+            decoderParameters.data = tmp;
+        }
 
         // Read decoder parameters
         for (size_t index = 0; index < nalUnits.size(); index++)

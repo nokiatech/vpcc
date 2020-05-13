@@ -106,6 +106,13 @@ bool HWVideoDecoder::initialize(DecoderConfig& config)
 
     AMediaFormat_setString(_inputFormat, AMEDIAFORMAT_KEY_MIME, mimeType.c_str());
 
+    int32_t framerate = 30;
+    AMediaFormat_setInt32(_inputFormat, AMEDIAFORMAT_KEY_FRAME_RATE, framerate);
+    AMediaFormat_setInt32(_inputFormat, AMEDIAFORMAT_KEY_I_FRAME_INTERVAL, framerate);
+
+    int32_t format = 21;
+    AMediaFormat_setInt32(_inputFormat, AMEDIAFORMAT_KEY_COLOR_FORMAT, format);
+
     AMediaFormat_setInt32(_inputFormat, AMEDIAFORMAT_KEY_WIDTH, _config.width);
     AMediaFormat_setInt32(_inputFormat, AMEDIAFORMAT_KEY_HEIGHT, _config.height);
 
@@ -117,9 +124,14 @@ bool HWVideoDecoder::initialize(DecoderConfig& config)
     // Each parameter set and the codec-specific-data sections marked with (*) must start with a start code of "\x00\x00\x00\x01".
 
     std::vector<uint8_t> decoderParameters;
+    decoderParameters.insert(decoderParameters.end(), _config.parameters.data.begin(), _config.parameters.data.end());
+
+    /*
     decoderParameters.insert(decoderParameters.end(), _config.parameters.vps.begin(), _config.parameters.vps.end());
     decoderParameters.insert(decoderParameters.end(), _config.parameters.sps.begin(), _config.parameters.sps.end());
     decoderParameters.insert(decoderParameters.end(), _config.parameters.pps.begin(), _config.parameters.pps.end());
+    */
+
 
     uint8_t* decoderConfig = decoderParameters.data();
     uint64_t decoderConfigSize = decoderParameters.size();
@@ -149,6 +161,8 @@ bool HWVideoDecoder::initialize(DecoderConfig& config)
 
         return false;
     }
+
+    _initialized = true;
 
     return true;
 }
@@ -199,7 +213,7 @@ bool HWVideoDecoder::shutdown()
             frame->uvTextureHandle = 0;
         }
 
-        _outputBuffers.pop();
+        _outputBuffers.erase(_outputBuffers.begin());
     }
 
     if (!_config.manualVideoTextureUpload)
@@ -294,11 +308,11 @@ bool HWVideoDecoder::queueVideoInputBuffer(uint8_t* data, size_t bytes, int64_t 
                                                                             presentationTimeStamp,
                                                                             eos ? AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM : 0);
 
-            LOG_D("VideoDecoder: %s, input buffer found: %zd, timestamp: %lld, length: %d, EOS: %d", _config.name.c_str(), inputBufferId, 0, bytes, (int32_t)eos);
+            LOG_D("VideoDecoder::queueVideoInputBuffer: %s, dts: %d, pts: %d, bytes: %zu, eos: %d", _config.name.c_str(), (uint32_t)decodeTimeStamp, (uint32_t)presentationTimeStamp, bytes, (int32_t)eos);
 
             if (queueInputStatus != AMEDIA_OK)
             {
-                LOG_E("VideoDecoder: %s, AMediaCodec_queueInputBuffer error", _config.name.c_str());
+                LOG_E("VideoDecoder::queueVideoInputBuffer: %s, AMediaCodec_queueInputBuffer error", _config.name.c_str());
 
                 return false;
             }
@@ -353,7 +367,7 @@ bool HWVideoDecoder::dequeueOutputBuffer()
             outputEOS = true;
         }
 
-        numTotalFramesDecoded++;
+        _numTotalFramesDecoded++;
 
         _frameCacheMutex.lock();
 
@@ -379,7 +393,7 @@ bool HWVideoDecoder::dequeueOutputBuffer()
         }
 
         _freeOutputBuffers.pop();
-        _outputBuffers.push(cachedFrame);
+        _outputBuffers.push_back(cachedFrame);
 
         _inputBuffers--;
 
@@ -392,25 +406,27 @@ bool HWVideoDecoder::dequeueOutputBuffer()
             AMediaCodec_releaseOutputBuffer(_mediaCodec, outputBufferId, false);
         }
 
+        LOG_D("VideoDecoder::dequeueOutputBuffer: %s, pts: %d", _config.name.c_str(), outputBufferInfo.presentationTimeUs);
+
         return true;
     }
     else if (outputBufferId == AMEDIACODEC_INFO_OUTPUT_BUFFERS_CHANGED)
     {
-        LOG_D("VideoDecoder: %s, Output buffers changed", _config.name.c_str());
+        LOG_D("VideoDecoder::dequeueOutputBuffer: %s, Output buffers changed", _config.name.c_str());
     }
     else if (outputBufferId == AMEDIACODEC_INFO_OUTPUT_FORMAT_CHANGED)
     {
         AMediaFormat* format = AMediaCodec_getOutputFormat(_mediaCodec);
-        LOG_D("VideoDecoder: %s, Output format changed to: %s", _config.name.c_str(), AMediaFormat_toString(format));
+        LOG_D("VideoDecoder::dequeueOutputBuffer: %s, Output format changed to: %s", _config.name.c_str(), AMediaFormat_toString(format));
         AMediaFormat_delete(format);
     }
     else if (outputBufferId == AMEDIACODEC_INFO_TRY_AGAIN_LATER)
     {
-        LOG_D("VideoDecoder: %s, No output buffer right now", _config.name.c_str());
+        // LOG_D("VideoDecoder::dequeueOutputBuffer: %s, No output buffer right now", _config.name.c_str());
     }
     else
     {
-        LOG_D("VideoDecoder: %s, Unexpected info code: %zd", _config.name.c_str(), outputBufferId);
+        LOG_E("VideoDecoder::dequeueOutputBuffer: %s, Unexpected info code: %zd", _config.name.c_str(), outputBufferId);
     }
 
     return false;

@@ -1,4 +1,6 @@
+#ifdef GL_ES
 precision highp float;
+#endif
 
 out vec2 v_tex_coord;
 

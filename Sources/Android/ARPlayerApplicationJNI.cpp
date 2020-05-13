@@ -93,10 +93,10 @@ extern "C"
         native(native_application)->onSurfaceCreated();
     }
 
-    JNI_METHOD(void, onDisplayGeometryChanged)
+    JNI_METHOD(void, onWindowResize)
     (JNIEnv *, jclass, jlong native_application, int display_rotation, int width, int height)
     {
-        native(native_application)->onDisplayGeometryChanged(display_rotation, width, height);
+        native(native_application)->onWindowResize(display_rotation, width, height);
     }
 
     JNI_METHOD(void, onGlSurfaceDrawFrame)

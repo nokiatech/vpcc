@@ -18,7 +18,7 @@ public class JniInterface {
   public static native void onPause(long nativeApplication);
   public static native void onResume(long nativeApplication, Context context, Activity activity);
   public static native void onGlSurfaceCreated(long nativeApplication);
-  public static native void onDisplayGeometryChanged(long nativeApplication, int displayRotation, int width, int height);
+  public static native void onWindowResize(long nativeApplication, int displayRotation, int width, int height);
   public static native void onGlSurfaceDrawFrame(long nativeApplication);
   public static native void onSingleTap(long nativeApplication, float x, float y);
   public static native void onScale(long nativeApplication, float s);

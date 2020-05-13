@@ -20,21 +20,27 @@
 #include <unordered_map>
 
 #include "GraphicsAPI.h"
-#include "PCCRenderer.h"
+
+#include "Config.h"
 #include "DebugTextRenderer.h"
-#include "DebugTextRenderer.h"
-#include "PassthroughCameraRenderer.h"
-#include "QuadRenderer.h"
 #include "DebugRenderer.h"
-#include "Texture2D.h"
+#include "QuadRenderer.h"
+#include "PassthroughCameraRenderer.h"
 #include "FeaturePointRenderer.h"
+#include "Texture2D.h"
 
 #include "IApplication.h"
-#include "ARPlayer.h"
+
+#if APPLICATION_MODE == APPLICATION_MODE_VPCC
+
+    #include "VPCC/VPCCPlayer.h"
+    #include "VPCC/VPCCRenderer.h"
+
+#endif
 
 #include "glm.h"
 
-#if PLATFORM_ANDROID
+#if ENABLE_ARCORE_SUPPORT
 
     #include "arcore_c_api.h"
 
@@ -64,7 +70,7 @@ public:
     virtual void onPause();
     virtual void onResume(void* env, void* context, void* activity);
     virtual void onSurfaceCreated();
-    virtual void onDisplayGeometryChanged(int display_rotation, int width, int height);
+    virtual void onWindowResize(int displayRotation, int width, int height);
     virtual void onDrawFrame();
 
     virtual void onSingleTap(float x, float y);
@@ -103,9 +109,12 @@ private:
     int32_t _screenHeight = 0;
     int32_t _displayRotation = 0;
 
-    ARPlayer* _arPlayer = NULL;
+#if APPLICATION_MODE == APPLICATION_MODE_VPCC
 
-    PCCRenderer _pccRenderer;
+    VPCCPlayer* _vpccPlayer = NULL;
+    VPCCRenderer _vpccRenderer;
+
+#endif
 
     DebugRenderer _debugDepthRenderer;
     DebugRenderer _debugColorRenderer;
@@ -127,7 +136,17 @@ private:
 
 private:
 
-#if PLATFORM_ANDROID
+#if APPLICATION_MODE == APPLICATION_MODE_VPCC
+
+    void drawVPCC();
+
+#endif
+    
+    void drawStats();
+
+private:
+
+#if ENABLE_ARCORE_SUPPORT
 
     ArSession* _arSession = NULL;
     ArConfig* _arConfig = NULL;
@@ -135,7 +154,7 @@ private:
 
     bool _installRequested = false;
 
-    void arcoreUpdateCamera(glm::mat4& view, glm::mat4& projection);
+    void arcoreUpdateCamera(glm::mat4& view, glm::mat4& projection, glm::fquat& orientation, glm::vec3& position);
     void arcoreRenderFeaturePoints(glm::mat4 model, glm::mat4 view, glm::mat4 projection);
     bool arcoreObjectHitTest(float x, float y, glm::mat4& model);
     bool arcoreGetMatrixFromAnchor(ArAnchor* anchor, glm::mat4& model);

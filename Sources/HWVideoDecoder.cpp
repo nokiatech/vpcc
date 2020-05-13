@@ -14,6 +14,8 @@
 
 #include "HWVideoDecoder.h"
 
+#include "HighResolutionTimer.h"
+
 HWVideoDecoderBase::HWVideoDecoderBase()
 {
 }
@@ -73,18 +75,49 @@ size_t HWVideoDecoderBase::getOutputQueueSize()
     return _outputBuffers.size();
 }
 
-CachedFrame* HWVideoDecoderBase::retainCachedFrame()
+bool HWVideoDecoderBase::isCachedFrameReady(int64_t presentationTimeStamp)
+{
+    bool result = false;
+
+    _frameCacheMutex.lock();
+
+    for (size_t i = 0; i < _outputBuffers.size(); ++i)
+    {
+        CachedFrame* frame = _outputBuffers.at(i);
+
+        if (frame->pts == presentationTimeStamp)
+        {
+            result = true;
+
+            break;
+        }
+    }
+
+    _frameCacheMutex.unlock();
+
+    return result;
+}
+
+CachedFrame* HWVideoDecoderBase::retainCachedFrame(int64_t presentationTimeStamp)
 {
     _frameCacheMutex.lock();
 
     CachedFrame* frame = NULL;
 
-    if (_outputBuffers.size() > 0)
+    for (size_t i = 0; i < _outputBuffers.size(); ++i)
     {
-        frame = _outputBuffers.front();
-        _outputBuffers.pop();
+        CachedFrame* cf = _outputBuffers.at(i);
 
-        uploadTexture(*frame);
+        if (cf->pts == presentationTimeStamp)
+        {
+            frame = cf;
+
+            _outputBuffers.erase(_outputBuffers.begin() + i);
+
+            uploadTexture(*frame);
+
+            break;
+        }
     }
 
     _frameCacheMutex.unlock();
@@ -113,4 +146,50 @@ bool HWVideoDecoderBase::releaseCachedFrame(CachedFrame* frame)
 const DecoderConfig& HWVideoDecoderBase::getConfig() const
 {
     return _config;
+}
+
+const DecoderStats& HWVideoDecoderBase::getStats() const
+{
+    return _statistics;
+}
+
+void HWVideoDecoderBase::beginStatisticsScope()
+{
+    _numTotalFramesDecoded = 0;
+    _totalFrameDecodingStartTime = HighResolutionTimer::getTimeMs();
+}
+
+void HWVideoDecoderBase::endStatisticsScope()
+{
+    _numTotalFramesDecoded = 0;
+    _totalFrameDecodingStartTime = 0;
+}
+
+void HWVideoDecoderBase::printStatistics()
+{
+    // Print average stats for whole clip
+    LOG_I("---------- DECODING STATS - BEGIN ----------");
+
+    // Calculate average decoding stats
+    int64_t totalFrameDecodingEndTime = HighResolutionTimer::getTimeMs();
+    int64_t totalFrameDecodingTime = totalFrameDecodingEndTime - _totalFrameDecodingStartTime;
+
+    int32_t averageFrameDuration = (int32_t)(totalFrameDecodingTime / _numTotalFramesDecoded);
+
+    _statistics.numTotalFrames = (uint32_t)_numTotalFramesDecoded;
+    _statistics.averageFPS = 1000.0f / (float)averageFrameDuration;
+    _statistics.averageFrameDurationMs = averageFrameDuration;
+
+    LOG_I("Total decoding time: %d", totalFrameDecodingTime);
+
+    LOG_I("Total num frames decoded: %d (Decoder: %s)", _statistics.numTotalFrames, _config.name.c_str());
+    LOG_I("Average %f fps (Decoder: %s)", _statistics.averageFPS, _config.name.c_str());
+    LOG_I("Average %d ms / frame (Decoder: %s)", _statistics.averageFrameDurationMs, _config.name.c_str());
+
+    LOG_I("---------- DECODING STATS - END ----------");
+}
+
+bool HWVideoDecoderBase::isValid() const
+{
+    return _initialized;
 }

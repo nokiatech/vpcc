@@ -77,16 +77,16 @@ const char* errorStringGL(GLenum error)
     return "GL_UNKNOWN_ERROR";
 }
 
-GLuint createShader(GLenum shader_type, const char* shader_source)
+GLuint createShader(GLenum shaderType, const char* shaderSource)
 {
-    GLuint shader = glCreateShader(shader_type);
+    GLuint shader = glCreateShader(shaderType);
 
     if (!shader)
     {
         return shader;
     }
 
-    glShaderSource(shader, 1, &shader_source, NULL);
+    glShaderSource(shader, 1, &shaderSource, NULL);
     glCompileShader(shader);
 
     GLint compiled = 0;
@@ -97,7 +97,7 @@ GLuint createShader(GLenum shader_type, const char* shader_source)
         char buffer[1024] = { 0 };
         glGetShaderInfoLog(shader, 1024, NULL, buffer);
 
-        LOG_E("Could not compile shader %d:\n%s", shader_type, buffer);
+        LOG_E("Could not compile shader %d:\n%s", shaderType, buffer);
 
         glDeleteShader(shader);
         shader = 0;
@@ -108,8 +108,9 @@ GLuint createShader(GLenum shader_type, const char* shader_source)
     return shader;
 }
 
-GLuint createProgram(const char* vertexShaderFilename, const char* fragmentShaderFilename, bool manualVideoTextureUpload, const char* varyings[], uint8_t num_varyings)
+std::string loadShader(const char* filename, GLint type, bool manualVideoTextureUpload)
 {
+    // Common functions
     std::string shaderLibraryFilename = "Assets/Shaders/common.glsl";
     std::string shaderLibrary;
 
@@ -128,47 +129,44 @@ GLuint createProgram(const char* vertexShaderFilename, const char* fragmentShade
         IOBuffer::free(&buffer);
     }
 
-    std::string vertexShaderContent;
+    // Shader
+    std::string shaderContent;
 
     {
-        IOBuffer buffer = FileSystem::loadFromBundle(vertexShaderFilename);
+        IOBuffer buffer = FileSystem::loadFromBundle(filename);
 
         if (buffer.data == NULL)
         {
-            LOG_E("Failed to load file: %s", vertexShaderFilename);
+            LOG_E("Failed to load file: %s", filename);
 
             return 0;
         }
 
-        vertexShaderContent.append((char*)buffer.data, buffer.size);
+        shaderContent.append((char*)buffer.data, buffer.size);
 
         IOBuffer::free(&buffer);
     }
 
-    std::string fragmentShaderContent;
-
-    {
-        IOBuffer buffer = FileSystem::loadFromBundle(fragmentShaderFilename);
-
-        if (buffer.data == NULL)
-        {
-            LOG_E("Failed to load file: %s", fragmentShaderFilename);
-
-            return 0;
-        }
-
-        fragmentShaderContent.append((char*)buffer.data, buffer.size);
-
-        IOBuffer::free(&buffer);
-    }
-
+    // Pre-process shader
     std::string version;
 
 #if PLATFORM_ANDROID || PLATFORM_IOS
 
-    bool oes3 = true;
+    #if PLATFORM_ANDROID
 
-    if (oes3)
+        int32_t apiVersion = 310;
+
+    #elif PLATFORM_IOS
+
+        int32_t apiVersion = 300;
+
+    #endif
+
+    if (apiVersion == 310)
+    {
+        version.append("#version 310 es\n");
+    }
+    else if (apiVersion)
     {
         version.append("#version 300 es\n");
     }
@@ -183,7 +181,7 @@ GLuint createProgram(const char* vertexShaderFilename, const char* fragmentShade
 
 #else
 
-	#error Unsupported platform
+    #error Unsupported platform
 
 #endif
 
@@ -191,10 +189,13 @@ GLuint createProgram(const char* vertexShaderFilename, const char* fragmentShade
 
 #if PLATFORM_ANDROID
 
-    if (oes3)
+    if (apiVersion >= 300)
     {
         extensions.append("#extension GL_OES_EGL_image_external_essl3 : require\n");
         extensions.append("#extension GL_EXT_YUV_target : require\n");
+
+        extensions.append("#extension GL_ANDROID_extension_pack_es31a : require\n");
+        //extensions.append("#extension GL_EXT_texture_buffer : require\n");
     }
     else
     {
@@ -203,58 +204,58 @@ GLuint createProgram(const char* vertexShaderFilename, const char* fragmentShade
 
 #endif
 
-    std::string definesVS;
-    definesVS.append("#define VERTEX_SHADER\n");
+    std::string defines;
 
-    std::string definesFS;
-    definesFS.append("#define FRAGMENT_SHADER\n");
+    if (type == GL_VERTEX_SHADER)
+    {
+        defines.append("#define VERTEX_SHADER\n");
+    }
+    else if (type == GL_FRAGMENT_SHADER)
+    {
+        defines.append("#define FRAGMENT_SHADER\n");
+    }
 
 #if PLATFORM_ANDROID
 
-    definesVS.append("#define PLATFORM_ANDROID\n");
-    definesFS.append("#define PLATFORM_ANDROID\n");
+    defines.append("#define PLATFORM_ANDROID\n");
 
 #elif PLATFORM_IOS
 
-    definesVS.append("#define PLATFORM_IOS\n");
-    definesFS.append("#define PLATFORM_IOS\n");
+    defines.append("#define PLATFORM_IOS\n");
 
 #elif PLATFORM_MACOS
 
-    definesVS.append("#define PLATFORM_MACOS\n");
-    definesFS.append("#define PLATFORM_MACOS\n");
+    defines.append("#define PLATFORM_MACOS\n");
 
 #elif PLATFORM_WINDOWS
 
-	definesVS.append("#define PLATFORM_WINDOWS\n");
-	definesFS.append("#define PLATFORM_WINDOWS\n");
+    defines.append("#define PLATFORM_WINDOWS\n");
 
 #endif
 
     if (manualVideoTextureUpload)
     {
-        definesVS.append("#define ENABLE_MANUAL_VIDEO_TEXTURE_UPLOAD\n");
-        definesFS.append("#define ENABLE_MANUAL_VIDEO_TEXTURE_UPLOAD\n");
+        defines.append("#define ENABLE_MANUAL_VIDEO_TEXTURE_UPLOAD\n");
     }
-
+    else
+    {
 #if PLATFORM_ANDROID
 
-    definesVS.append("#define ENABLE_MEDIA_CODEC\n");
-    definesFS.append("#define ENABLE_MEDIA_CODEC\n");
+    defines.append("#define ENABLE_MEDIA_CODEC\n");
 
 #elif PLATFORM_IOS || PLATFORM_MACOS
 
-    definesVS.append("#define ENABLE_VIDEO_TOOLBOX\n");
-    definesFS.append("#define ENABLE_VIDEO_TOOLBOX\n");
+    defines.append("#define ENABLE_VIDEO_TOOLBOX\n");
 
 #elif PLATFORM_WINDOWS
 
-	definesVS.append("#define ENABLE_MANUAL_VIDEO_TEXTURE_UPLOAD\n");
-	definesFS.append("#define ENABLE_MANUAL_VIDEO_TEXTURE_UPLOAD\n");
+    defines.append("#define ENABLE_MANUAL_VIDEO_TEXTURE_UPLOAD\n");
 
 #endif
+    }
 
 #if 0
+
     const char* precision = R"(
     #ifdef GL_ES
         #ifdef GL_FRAGMENT_PRECISION_HIGH
@@ -268,23 +269,24 @@ GLuint createProgram(const char* vertexShaderFilename, const char* fragmentShade
         #define highp
     #endif
     )";
+
 #endif
 
-    std::string preprocessedVS;
-    preprocessedVS.append(version);
-    preprocessedVS.append(extensions);
-    //preprocessedVS.append(precision);
-    preprocessedVS.append(definesVS);
-    preprocessedVS.append(shaderLibrary);
-    preprocessedVS.append(vertexShaderContent);
+    std::string result;
+    result.append(version);
+    result.append(extensions);
+    //result.append(precision);
+    result.append(defines);
+    result.append(shaderLibrary);
+    result.append(shaderContent);
 
-    std::string preprocessedFS;
-    preprocessedFS.append(version);
-    preprocessedFS.append(extensions);
-    //preprocessedFS.append(precision);
-    preprocessedFS.append(definesFS);
-    preprocessedFS.append(shaderLibrary);
-    preprocessedFS.append(fragmentShaderContent);
+    return result;
+}
+
+GLuint createProgram(const char* vertexShaderFilename, const char* fragmentShaderFilename, bool manualVideoTextureUpload, const char* varyings[], uint8_t numVaryings)
+{
+    std::string preprocessedVS = loadShader(vertexShaderFilename, GL_VERTEX_SHADER, manualVideoTextureUpload);
+    std::string preprocessedFS = loadShader(fragmentShaderFilename, GL_FRAGMENT_SHADER, manualVideoTextureUpload);
 
     GLuint vertexShader = createShader(GL_VERTEX_SHADER, preprocessedVS.c_str());
 
@@ -310,9 +312,9 @@ GLuint createProgram(const char* vertexShaderFilename, const char* fragmentShade
         glAttachShader(program, fragment_shader);
         GL_CHECK_ERRORS();
 
-        if (varyings != NULL && num_varyings > 0)
+        if (varyings != NULL && numVaryings > 0)
         {
-            glTransformFeedbackVaryings(program, num_varyings, varyings, GL_SEPARATE_ATTRIBS);
+            glTransformFeedbackVaryings(program, numVaryings, varyings, GL_SEPARATE_ATTRIBS);
             GL_CHECK_ERRORS();
         }
 
@@ -344,51 +346,49 @@ GLuint createProgram(const char* vertexShaderFilename, const char* fragmentShade
         }
     }
 
+    GL_CHECK_ERRORS();
+
     return program;
 }
 
 void pushDebugMarker(const char* name)
 {
-#if PLATFORM_ANDROID
+#if PLATFORM_WINDOWS
 
-    return;
+	glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION_KHR, 1, -1, name);
 
-#endif
+#elif PLATFORM_ANDROID
 
-#ifndef PLATFORM_WINDOWS
+    // TODO
 
-#if GL_KHR_debug
+#elif GL_KHR_debug
 
-    glPushDebugGroupKHR(GL_DEBUG_SOURCE_APPLICATION_KHR, 1, -1, name);
+	glPushDebugGroupKHR(GL_DEBUG_SOURCE_APPLICATION_KHR, 1, -1, name);
 
 #elif GL_EXT_debug_marker
 
-    glPushGroupMarkerEXT(0, name);
-
-#endif
+	glPushGroupMarkerEXT(0, name);
 
 #endif
 }
 
 void popDebugMarker()
 {
-#if PLATFORM_ANDROID
+#if PLATFORM_WINDOWS
 
-    return;
+	glPopDebugGroup();
 
-#endif
+#elif PLATFORM_ANDROID
 
-#ifndef PLATFORM_WINDOWS
+    // TODO
 
-#if GL_KHR_debug
+#elif GL_KHR_debug
 
-    glPopDebugGroupKHR();
+	glPopDebugGroupKHR();
 
 #elif GL_EXT_debug_marker
 
-    glPopGroupMarkerEXT();
-
-#endif
+	glPopGroupMarkerEXT();
 
 #endif
 }

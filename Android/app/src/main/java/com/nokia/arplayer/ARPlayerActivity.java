@@ -93,6 +93,8 @@ public class ARPlayerActivity
     enableManualTextureUploadMode = intent.getBooleanExtra(MainMenu.MSG_ENABLE_MANUAL_TEXTURE_UPLOAD_MODE, false);
     videoFilename = intent.getStringExtra(MainMenu.MSG_CONTENT);
 
+    if (videoFilename == null) videoFilename = "";
+
     // Set up gesture listeners.
     scaleDetector = new ScaleGestureDetector(this,
             new ScaleGestureDetector.SimpleOnScaleGestureListener() {
@@ -111,16 +113,16 @@ public class ARPlayerActivity
         new GestureDetector(
             this,
             new GestureDetector.SimpleOnGestureListener() {
-              @Override
-              public boolean onSingleTapUp(final MotionEvent e) {
-                if (scaleDetector.isInProgress()) {
-                    return false;
+                @Override
+                public boolean onSingleTapUp(final MotionEvent e) {
+                    if (scaleDetector.isInProgress()) {
+                        return false;
+                    }
+
+                    surfaceView.queueEvent(() -> JniInterface.onSingleTap(nativeApplication, e.getX(), e.getY()));
+
+                    return true;
                 }
-
-                surfaceView.queueEvent(() -> JniInterface.onSingleTap(nativeApplication, e.getX(), e.getY()));
-
-                return true;
-              }
 
                 @Override
                 public boolean onDoubleTap(final MotionEvent e) {
@@ -133,15 +135,15 @@ public class ARPlayerActivity
                     return true;
                 }
 
-              @Override
-              public boolean onDown(MotionEvent e)
-              {
-                if (scaleDetector.isInProgress()) {
-                    return false;
-                }
+                @Override
+                public boolean onDown(MotionEvent e)
+                {
+                    if (scaleDetector.isInProgress()) {
+                        return false;
+                    }
 
-                return true;
-              }
+                    return true;
+                }
             });
 
     surfaceView.setOnTouchListener(
@@ -150,7 +152,7 @@ public class ARPlayerActivity
     // Set up renderer.
     surfaceView.setPreserveEGLContextOnPause(true);
     surfaceView.setEGLContextClientVersion(3); // 2
-    surfaceView.setEGLConfigChooser(8, 8, 8, 8, 16, 0); // Alpha used for plane blending.
+    surfaceView.setEGLConfigChooser(8, 8, 8, 8, 24, 0); // Alpha used for plane blending.
     surfaceView.setRenderer(this);
     surfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
@@ -242,7 +244,7 @@ public class ARPlayerActivity
 
       if (viewportChanged) {
         int displayRotation = getWindowManager().getDefaultDisplay().getRotation();
-        JniInterface.onDisplayGeometryChanged(nativeApplication, displayRotation, viewportWidth, viewportHeight);
+        JniInterface.onWindowResize(nativeApplication, displayRotation, viewportWidth, viewportHeight);
         viewportChanged = false;
       }
 

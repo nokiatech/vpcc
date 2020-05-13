@@ -16,13 +16,16 @@
 
 #include "Logger.h"
 
-// OpenGL ES 3.0
+// OpenGL ES 3.0 / 3.1 / 3.2
 #if PLATFORM_ANDROID
 
     #include <EGL/egl.h>
     #include <EGL/eglext.h>
 
-    #include <GLES3/gl3.h>
+    // #include <GLES3/gl3.h>
+    // #include <GLES3/gl31.h>
+    #include <GLES3/gl32.h>
+
     #include <GLES2/gl2ext.h>
 
 #elif PLATFORM_IOS
@@ -39,6 +42,7 @@
 
 #elif PLATFORM_WINDOWS
 
+	#define NOMINMAX 1
 	#include <windows.h>
 
 	#include <gl/gl.h>
@@ -53,6 +57,8 @@
 #endif
 
 #include <assert.h>
+
+#include <string>
 
 // OpenGL function pointers.
 #define GL_DECLARE(a, b) extern a b;
@@ -72,8 +78,19 @@ struct GLRegistryLoader
     }
 };
 
+struct ShaderType
+{
+    enum Enum
+    {
+        VERTEX_SHADER = 0,
+        FRAGMENT_SHADER = 1,
+    };
+};
+
 const char* errorStringGL(GLenum error);
-GLuint createProgram(const char* vertex_shader_file_name, const char* fragment_shader_file_name, bool manualVideoTextureUpload = false, const char* varyings[] = NULL, uint8_t num_varyings = 0);
+
+std::string loadShader(const char* filename, GLint type, bool manualVideoTextureUpload = false);
+GLuint createProgram(const char* vertexShaderFilename, const char* fragmentShaderFilename, bool manualVideoTextureUpload = false, const char* varyings[] = NULL, uint8_t num_varyings = 0);
 
 void pushDebugMarker(const char* name);
 void popDebugMarker();

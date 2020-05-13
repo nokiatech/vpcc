@@ -1,3 +1,5 @@
+// Common
+
 #if defined(VERTEX_SHADER)
     #if (__VERSION__ < 130)
         #define in attribute

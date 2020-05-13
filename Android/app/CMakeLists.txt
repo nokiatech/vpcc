@@ -22,23 +22,23 @@ set_target_properties(arcore PROPERTIES IMPORTED_LOCATION
 # This is the main app library.
 add_library(arplayer_native SHARED
            ${source_tmc}
-           ../../Sources/ARPlayer.cpp
            ../../Sources/ARPlayerApplication.cpp
            ../../Sources/DebugRenderer.cpp
            ../../Sources/DebugTextRenderer.cpp
            ../../Sources/GraphicsAPI.cpp
-           ../../Sources/HEVCBitstream.cpp
-           ../../Sources/HEVC.cpp
            ../../Sources/HighResolutionTimer.cpp
            ../../Sources/HWVideoDecoder.cpp
            ../../Sources/PassthroughCameraRenderer.cpp
            ../../Sources/FeaturePointRenderer.cpp
-           ../../Sources/PCCBitstream60.cpp
-           ../../Sources/PCCParser60.cpp
-           ../../Sources/PCCRenderer.cpp
-           ../../Sources/QuadRenderer.cpp
            ../../Sources/TGA.cpp
            ../../Sources/Texture2D.cpp
+           ../../Sources/QuadRenderer.cpp
+           ../../Sources/HEVCBitstream.cpp
+           ../../Sources/HEVC.cpp
+           ../../Sources/VPCC/VPCCPlayer.cpp
+           ../../Sources/VPCC/VPCCBitstream80.cpp
+           ../../Sources/VPCC/VPCCParser80.cpp
+           ../../Sources/VPCC/VPCCRenderer.cpp
            ../../Sources/Android/Logger.cpp
            ../../Sources/Android/FileSystem.cpp
            ../../Sources/Android/Surface.cpp
@@ -49,6 +49,7 @@ add_library(arplayer_native SHARED
 
 target_include_directories(arplayer_native PRIVATE
                            ../../Sources
+                           ../../Sources/External
                            ../../Sources/External/glm
                            ../../Sources/External/STB
                            ../../Sources/External/ARCore/include)

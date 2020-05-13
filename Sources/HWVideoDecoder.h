@@ -38,8 +38,8 @@ struct CachedFrame
 
     bool uploaded = false;
 
-    uint16_t width = 0;
-    uint16_t height = 0;
+    uint32_t width = 0;
+    uint32_t height = 0;
 
     GLenum target = 0;
 
@@ -118,10 +118,10 @@ struct CachedFrame
 
 struct DecoderConfig
 {
-    DecoderParameters parameters;
+    HEVC::DecoderParameters parameters;
 
-    uint16_t width = 0;
-    uint16_t height = 0;
+    int32_t width = 0;
+    int32_t height = 0;
 
     std::string name = "";
 
@@ -131,14 +131,19 @@ struct DecoderConfig
     int32_t inputBufferQueueSize = 0;
 };
 
+struct DecoderStats
+{
+    uint32_t numTotalFrames = 0;
+    float averageFPS = 0.0f;
+    uint32_t averageFrameDurationMs = 0;
+};
+
 class HWVideoDecoderBase
 {
 public:
 
     bool inputEOS = false;
     bool outputEOS = false;
-
-    int64_t numTotalFramesDecoded = 0;
 
 public:
 
@@ -158,7 +163,11 @@ public: // Decoder
     virtual bool queueVideoInputBuffer(uint8_t* data, size_t bytes, int64_t decodeTimeStamp, int64_t presentationTimeStamp, bool inputEOS = false) = 0;
     virtual bool dequeueOutputBuffer() = 0;
 
+public:
+
     const DecoderConfig& getConfig() const;
+
+    bool isValid() const;
 
     bool isInputQueueEmpty();
     bool isInputQueueFull();
@@ -168,8 +177,19 @@ public: // Decoder
 
     size_t getOutputQueueSize();
 
-    CachedFrame* retainCachedFrame();
+    bool isCachedFrameReady(int64_t presentationTimeStamp);
+
+    CachedFrame* retainCachedFrame(int64_t presentationTimeStamp);
     bool releaseCachedFrame(CachedFrame* frame);
+
+    const DecoderStats& getStats() const;
+
+    void beginStatisticsScope();
+    void endStatisticsScope();
+
+    void printStatistics();
+
+    void flushCachedFrames();
 
 protected:
 
@@ -182,8 +202,15 @@ protected:
     int32_t _inputBuffers = 0;
 
     // Caches frames waiting for upload and usage
-    std::queue<CachedFrame*> _outputBuffers;
+    std::vector<CachedFrame*> _outputBuffers;
     std::queue<CachedFrame*> _freeOutputBuffers;
 
-    std::mutex _frameCacheMutex;
+    std::recursive_mutex _frameCacheMutex;
+
+    int64_t _totalFrameDecodingStartTime = 0;
+    int64_t _numTotalFramesDecoded = 0;
+    
+    DecoderStats _statistics;
+
+    bool _initialized = false;
 };

@@ -1,4 +1,6 @@
+#ifdef GL_ES
 precision highp float;
+#endif
 
 // xy = position
 // zw = texture coords

@@ -25,7 +25,7 @@ public:
     virtual void onResume(void* env, void* context, void* activity) = 0;
 
     virtual void onSurfaceCreated() = 0;
-    virtual void onDisplayGeometryChanged(int display_rotation, int width, int height) = 0;
+    virtual void onWindowResize(int displayRotation, int width, int height) = 0;
 
     virtual void onDrawFrame() = 0;
 

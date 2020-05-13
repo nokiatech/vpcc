@@ -65,17 +65,15 @@ ARPlayerApplication::ARPlayerApplication(Settings settings)
 
 ARPlayerApplication::~ARPlayerApplication()
 {
+#if ENABLE_ARCORE_SUPPORT
+
     if (_settings.enableAR)
     {
-#if PLATFORM_ANDROID
-
         if (_arSession != NULL)
         {
             ArSession_destroy(_arSession);
             ArFrame_destroy(_arFrame);
         }
-
-#endif
         
         _passthroughCameraRenderer.destroy();
         _featurePointRenderer.destroy();
@@ -83,16 +81,22 @@ ARPlayerApplication::~ARPlayerApplication()
         GL_CHECK_ERRORS();
     }
 
-    if (_arPlayer)
-    {
-        _arPlayer->stop();
-        _arPlayer->shutdown();
+#endif
 
-        delete _arPlayer;
-        _arPlayer = NULL;
+#if APPLICATION_MODE == APPLICATION_MODE_VPCC
+
+    if (_vpccPlayer)
+    {
+        _vpccPlayer->stop();
+        _vpccPlayer->shutdown();
+
+        delete _vpccPlayer;
+        _vpccPlayer = NULL;
     }
 
-    _pccRenderer.destroy();
+    _vpccRenderer.destroy();
+
+#endif
 
     _debugDepthRenderer.destroy();
     _debugColorRenderer.destroy();
@@ -114,24 +118,24 @@ void ARPlayerApplication::onPause()
 {
     LOG_D("onPause()");
 
+#if ENABLE_ARCORE_SUPPORT
+
     if (_settings.enableAR)
     {
-#if PLATFORM_ANDROID
-
         if (_arSession != NULL)
         {
             ArSession_pause(_arSession);
         }
+    }
 
 #endif
-    }
 }
 
 void ARPlayerApplication::onResume(void* env, void* context, void* activity)
 {
     LOG_D("onResume()");
 
-#if PLATFORM_ANDROID
+#if ENABLE_ARCORE_SUPPORT
 
     if (_settings.enableAR)
     {
@@ -202,6 +206,8 @@ void ARPlayerApplication::onSurfaceCreated()
 
     LOG_I("---------- DEVICE INFO - END ----------");
 
+#if ENABLE_ARCORE_SUPPORT
+
     // Initialize
     if (_settings.enableAR)
     {
@@ -211,7 +217,7 @@ void ARPlayerApplication::onSurfaceCreated()
         GL_CHECK_ERRORS();
     }
 
-    _pccRenderer.create(_settings.enableManualVideoTextureUpload);
+#endif
 
     _debugDepthRenderer.create(DebugRenderer::Type::DEBUG_DEPTH, _settings.enableManualVideoTextureUpload);
     _debugColorRenderer.create(DebugRenderer::Type::DEBUG_COLOR, _settings.enableManualVideoTextureUpload);
@@ -230,53 +236,113 @@ void ARPlayerApplication::onSurfaceCreated()
 
     GL_CHECK_ERRORS();
 
-    // Initialize AR player
-    if (_arPlayer == NULL)
-    {
-        _arPlayer = new ARPlayer();
+    // Initialize player
+#if APPLICATION_MODE == APPLICATION_MODE_VPCC
 
-        ARPlayer::Config config;
+    _vpccRenderer.create(_settings.enableManualVideoTextureUpload);
+
+    if (_vpccPlayer == NULL)
+    {
+        _vpccPlayer = new VPCCPlayer();
+
+        VPCCPlayer::Config config;
         config.manualVideoTextureUpload = _settings.enableManualVideoTextureUpload;
 
-		ARPlayer::Result::Enum result = ARPlayer::Result::RESULT_OK;
+		VPCCPlayer::Result::Enum result = VPCCPlayer::Result::RESULT_OK;
 
-		result = _arPlayer->initialize(config);
-        assert(result == ARPlayer::Result::RESULT_OK);
+		result = _vpccPlayer->initialize(config);
+        assert(result == VPCCPlayer::Result::RESULT_OK);
 
-		result = _arPlayer->open(_settings.filename);
-        assert(result == ARPlayer::Result::RESULT_OK);
+		result = _vpccPlayer->open(_settings.filename);
+        assert(result == VPCCPlayer::Result::RESULT_OK);
 
-		result = _arPlayer->play();
-        assert(result == ARPlayer::Result::RESULT_OK);
+		result = _vpccPlayer->play();
+        assert(result == VPCCPlayer::Result::RESULT_OK);
     }
+
+#endif
 
     GL_CHECK_ERRORS();
 }
 
-void ARPlayerApplication::onDisplayGeometryChanged(int display_rotation, int width, int height)
+void ARPlayerApplication::onWindowResize(int displayRotation, int width, int height)
 {
-    LOG_D("onDisplayGeometryChanged(%d, %d)", width, height);
+    LOG_D("onWindowResize(%d, %d)", width, height);
 
     glViewport(0, 0, width, height);
 
-    _displayRotation = display_rotation;
+    _displayRotation = displayRotation;
+
     _screenWidth = width;
     _screenHeight = height;
 
+#if ENABLE_ARCORE_SUPPORT
+
     if (_settings.enableAR)
     {
-#if PLATFORM_ANDROID
-
         if (_arSession != NULL)
         {
-            ArSession_setDisplayGeometry(_arSession, display_rotation, width, height);
+            ArSession_setDisplayGeometry(_arSession, _displayRotation, width, height);
         }
+    }
 
 #endif
-    }
 }
 
 void ARPlayerApplication::onDrawFrame()
+{
+#if APPLICATION_MODE == APPLICATION_MODE_VPCC
+
+    drawVPCC();
+
+#endif
+}
+
+void ARPlayerApplication::drawStats()
+{
+    // Update stats
+    int64_t frameTime = HighResolutionTimer::getTimeMs();
+    int64_t duration = frameTime - _previousFrameTime;
+    float fps = 1000.0f / (float)duration;
+
+    _frameCounter++;
+    _previousFrameTime = frameTime;
+
+    if (_frameCounter % 10 == 0)
+    {
+        _fps = fps;
+        _frameDuration = duration;
+    }
+
+    // Draw stats
+    if (_settings.enableDebugMode)
+    {
+        glm::vec4 textColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+        glm::vec4 backgroundColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+
+        _debugTextRenderer.printFormat(glm::vec2(1.0f, 1.0f), textColor, backgroundColor, "API version: %s", _deviceInfo.glVersion.c_str());
+        _debugTextRenderer.printFormat(glm::vec2(1.0f, 2.0f), textColor, backgroundColor, "Shader language version: %s", _deviceInfo.glslVersion.c_str());
+        _debugTextRenderer.printFormat(glm::vec2(1.0f, 3.0f), textColor, backgroundColor, "Vendor: %s", _deviceInfo.vendor.c_str());
+        _debugTextRenderer.printFormat(glm::vec2(1.0f, 4.0f), textColor, backgroundColor, "Renderer: %s", _deviceInfo.renderer.c_str());
+        _debugTextRenderer.printFormat(glm::vec2(1.0f, 5.0f), textColor, backgroundColor, "Display: %dx%d", _screenWidth, _screenHeight);
+
+        _debugTextRenderer.printFormat(glm::vec2(1.0f, 7.0f), textColor, backgroundColor, "Frame: %d", _frameCounter);
+        _debugTextRenderer.printFormat(glm::vec2(1.0f, 8.0f), textColor, backgroundColor, "%f fps (rendering)", _fps);
+        _debugTextRenderer.printFormat(glm::vec2(1.0f, 9.0f), textColor, backgroundColor, "%d ms / frame (rendering)", _frameDuration);
+    }
+
+    // Draw Logo
+    glm::vec2 logoSize = glm::vec2(766.0f, 125.0f) * 0.5f;
+
+    float logoPosX = _screenWidth - logoSize.x - 100.0f;
+    float logoPosY = 100.0f;
+
+    _spriteRenderer.draw(_nokiaLogo, glm::vec2(logoPosX, logoPosY), logoSize, 0.0f, glm::vec4(0.0f / 255.0f, 51.0f / 255.0f, 153.0f / 255.0f, 1.0f));
+}
+
+#if APPLICATION_MODE == APPLICATION_MODE_VPCC
+
+void ARPlayerApplication::drawVPCC()
 {
     // Draw ARCore stuff
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -296,21 +362,24 @@ void ARPlayerApplication::onDrawFrame()
 
     bool renderPccModel = true;
 
+#if ENABLE_ARCORE_SUPPORT
+
     if (_settings.enableAR)
     {
-#if PLATFORM_ANDROID
-
         arModel = _objectModel;
         renderPccModel = _objectEnabled;
 
-        arcoreUpdateCamera(arView, arProjection);
+        glm::fquat cameraOrientation = glm::fquat(0.0f, 0.0f, 0.0f, 1.0f);
+        glm::vec3 cameraPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+
+        arcoreUpdateCamera(arView, arProjection, cameraOrientation, cameraPosition);
 
         _passthroughCameraRenderer.draw();
 
         arcoreRenderFeaturePoints(arModel, arView, arProjection);
-        
-#endif
     }
+
+#endif
 
     glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
@@ -321,7 +390,7 @@ void ARPlayerApplication::onDrawFrame()
     {
         bool planeHit = false;
 
-#if PLATFORM_ANDROID
+#if ENABLE_ARCORE_SUPPORT
 
         glm::mat4 tmp(1.0f);
 
@@ -408,13 +477,13 @@ void ARPlayerApplication::onDrawFrame()
             mvp = projection * view * model;
         }
 
-        // PCC rendering
-        PCCRenderer::PresentationFrame presentationFrame;
-        ARPlayer::Result::Enum result = _arPlayer->fetchPresentationFrame(presentationFrame);
+        // Rendering
+        VPCCRenderer::PresentationFrame presentationFrame;
+        VPCCPlayer::Result::Enum result = _vpccPlayer->fetchPresentationFrame(presentationFrame);
 
-        if (result == ARPlayer::Result::RESULT_OK)
+        if (result == VPCCPlayer::Result::RESULT_NEW_FRAME || result == VPCCPlayer::Result::RESULT_OLD_FRAME)
         {
-            _pccRenderer.draw(presentationFrame, model, view, projection, mvp, offset, _scale);
+            _vpccRenderer.draw(presentationFrame, model, view, projection, mvp, offset, _scale);
 
             // Debug render video textures
             if (_settings.enableDebugMode)
@@ -491,27 +560,16 @@ void ARPlayerApplication::onDrawFrame()
                 }
             }
 
-            // Draw decoder stats
-            if (_settings.enableDebugMode)
-            {
-                ARPlayer::StatsCollection stats = _arPlayer->getStatsCollection();
-
-                _debugTextRenderer.printFormat(glm::vec2(1.0f, 11.0f), textColor, backgroundColor, "%f fps (Decoder: geometry)", stats.geometry.averageFPS);
-                _debugTextRenderer.printFormat(glm::vec2(1.0f, 12.0f), textColor, backgroundColor, "%d ms / frame (Decoder: geometry)", stats.geometry.averageFrameDurationMs);
-
-                _debugTextRenderer.printFormat(glm::vec2(1.0f, 13.0f), textColor, backgroundColor, "%f fps (Decoder: texture)", stats.texture.averageFPS);
-                _debugTextRenderer.printFormat(glm::vec2(1.0f, 14.0f), textColor, backgroundColor, "%d ms / frame (Decoder: texture)", stats.texture.averageFrameDurationMs);
-
-                _debugTextRenderer.printFormat(glm::vec2(1.0f, 15.0f), textColor, backgroundColor, "%f fps (Decoder: occupancy)", stats.occupancy.averageFPS);
-                _debugTextRenderer.printFormat(glm::vec2(1.0f, 16.0f), textColor, backgroundColor, "%d ms / frame (Decoder: occupancy)", stats.occupancy.averageFrameDurationMs);
-            }
-
             if (_playbackPaused)
             {
                 _spriteRenderer.draw(_playbackPausedIcon, glm::vec2(0.0f, 2000.0f), glm::vec2(200.0f, 200.0f), 0.0f, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
             }
         }
-        else if (result == ARPlayer::Result::RESULT_OUT_OF_SYNC_FRAME_AVAILABLE)
+        else if (result == VPCCPlayer::Result::RESULT_EOS)
+        {
+            _vpccPlayer->restart();
+        }
+        else if (result == VPCCPlayer::Result::RESULT_OUT_OF_SYNC_FRAME_AVAILABLE)
         {
             if (_settings.enableDebugMode)
             {
@@ -527,67 +585,39 @@ void ARPlayerApplication::onDrawFrame()
         }
     }
 
-    // Update stats
-    int64_t frameTime = HighResolutionTimer::getTimeMs();
-    int64_t duration = frameTime - _previousFrameTime;
-    float fps = 1000.0f / (float)duration;
-
-    _frameCounter++;
-    _previousFrameTime = frameTime;
-
-    if (_frameCounter % 10 == 0)
-    {
-        _fps = fps;
-        _frameDuration = duration;
-    }
-
-    // Draw stats
-    if (_settings.enableDebugMode)
-    {
-        _debugTextRenderer.printFormat(glm::vec2(1.0f, 1.0f), textColor, backgroundColor, "API version: %s", _deviceInfo.glVersion.c_str());
-        _debugTextRenderer.printFormat(glm::vec2(1.0f, 2.0f), textColor, backgroundColor, "Shader language version: %s", _deviceInfo.glslVersion.c_str());
-        _debugTextRenderer.printFormat(glm::vec2(1.0f, 3.0f), textColor, backgroundColor, "Vendor: %s", _deviceInfo.vendor.c_str());
-        _debugTextRenderer.printFormat(glm::vec2(1.0f, 4.0f), textColor, backgroundColor, "Renderer: %s", _deviceInfo.renderer.c_str());
-        _debugTextRenderer.printFormat(glm::vec2(1.0f, 5.0f), textColor, backgroundColor, "Display: %dx%d", _screenWidth, _screenHeight);
-
-        _debugTextRenderer.printFormat(glm::vec2(1.0f, 7.0f), textColor, backgroundColor, "Frame: %d", _frameCounter);
-        _debugTextRenderer.printFormat(glm::vec2(1.0f, 8.0f), textColor, backgroundColor, "%f fps (rendering)", _fps);
-        _debugTextRenderer.printFormat(glm::vec2(1.0f, 9.0f), textColor, backgroundColor, "%d ms / frame (rendering)", _frameDuration);
-    }
-
-    // Draw Logo
-    glm::vec2 logoSize = glm::vec2(766.0f, 125.0f) * 0.5f;
-
-    float logoPosX = _screenWidth - logoSize.x - 100.0f;
-    float logoPosY = 100.0f;
-
-    _spriteRenderer.draw(_nokiaLogo, glm::vec2(logoPosX, logoPosY), logoSize, 0.0f, glm::vec4(0.0f / 255.0f, 51.0f / 255.0f, 153.0f / 255.0f, 1.0f));
+	drawStats();
 }
+
+#endif
 
 void ARPlayerApplication::onSingleTap(float x, float y)
 {
+#if ENABLE_ARCORE_SUPPORT
+
     if (_settings.enableAR)
     {
-#if PLATFORM_ANDROID
-
         _objectEnabled = arcoreObjectHitTest((float)_screenWidth * 0.5f, (float)_screenHeight * 0.5f, _objectModel);
+    }
 
 #endif
-    }
 }
 
 void ARPlayerApplication::onDoubleTap(float x, float y)
 {
     _playbackPaused = !_playbackPaused;
 
+#if APPLICATION_MODE == APPLICATION_MODE_VPCC
+
     if (_playbackPaused)
     {
-        _arPlayer->pause();
+        _vpccPlayer->pause();
     }
     else
     {
-        _arPlayer->resume();
+        _vpccPlayer->resume();
     }
+
+#endif
 }
 
 void ARPlayerApplication::onDrag(float x0, float y0, float x1, float y1)
@@ -603,7 +633,7 @@ void ARPlayerApplication::onScale(float s)
     _scale = s;
 }
 
-#if PLATFORM_ANDROID
+#if ENABLE_ARCORE_SUPPORT
 
 void ARPlayerApplication::arcoreRenderFeaturePoints(glm::mat4 model, glm::mat4 view, glm::mat4 projection)
 {
@@ -647,7 +677,7 @@ void ARPlayerApplication::arcoreRenderFeaturePoints(glm::mat4 model, glm::mat4 v
     }
 }
 
-void ARPlayerApplication::arcoreUpdateCamera(glm::mat4& view, glm::mat4& projection)
+void ARPlayerApplication::arcoreUpdateCamera(glm::mat4& view, glm::mat4& projection, glm::fquat& orientation, glm::vec3& position)
 {
     if (_arSession == NULL) return;
 
@@ -666,6 +696,24 @@ void ARPlayerApplication::arcoreUpdateCamera(glm::mat4& view, glm::mat4& project
 
     ArCamera_getViewMatrix(_arSession, camera, glm::value_ptr(view));
     ArCamera_getProjectionMatrix(_arSession, camera, 0.1f, 100.f, glm::value_ptr(projection));
+
+    // Fetch AR world camera pose
+    ArPose* cameraPose = NULL;
+    ArPose_create(_arSession, NULL, &cameraPose);
+
+    ArCamera_getPose(_arSession, camera, cameraPose);
+
+    float cameraPoseRaw[7] = { 0.0f };
+    ArPose_getPoseRaw(_arSession, cameraPose, cameraPoseRaw);
+
+    orientation = glm::fquat(cameraPoseRaw[0], cameraPoseRaw[1], cameraPoseRaw[2], cameraPoseRaw[3]);
+    position = glm::vec3(cameraPoseRaw[4], cameraPoseRaw[5], cameraPoseRaw[6]);
+
+    ArPose_destroy(cameraPose);
+    cameraPose = NULL;
+
+    ArCamera_release(camera);
+    camera = NULL;
 }
 
 bool ARPlayerApplication::arcoreObjectHitTest(float x, float y, glm::mat4& model)
@@ -711,11 +759,11 @@ bool ARPlayerApplication::arcoreObjectHitTest(float x, float y, glm::mat4& model
                 ArPlane_isPoseInPolygon(_arSession, plane, hitPose, &isPoseInPolygon);
 
                 // Use hit pose and camera pose to check if hittest is from the back of the plane
-                ArPose* cameraPose = NULL;
-                ArPose_create(_arSession, NULL, &cameraPose);
-
                 ArCamera* camera;
                 ArFrame_acquireCamera(_arSession, _arFrame, &camera);
+
+                ArPose* cameraPose = NULL;
+                ArPose_create(_arSession, NULL, &cameraPose);
 
                 ArCamera_getPose(_arSession, camera, cameraPose);
 
