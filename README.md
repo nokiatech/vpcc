@@ -48,5 +48,5 @@ Please see **[LICENSE.TXT](https://github.com/nokiatech/vpcc/blob/master/LICENSE
 
 For more information, please contact: <VPCC.contact@nokia.com>
 
-### Copyright (c) 2018-2019 Nokia Corporation and/or its subsidiary(-ies).
+### Copyright (c) 2018-2020 Nokia Corporation and/or its subsidiary(-ies).
 ### **All rights reserved.** 
