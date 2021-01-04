@@ -191,7 +191,9 @@ void VPCCRenderer::draw(PresentationFrame& presentationFrame, glm::mat4 model, g
 
     // Prepare block buffer
     uint16_t activeBlocks = 0;
+    
     size_t numPatches = presentationFrame.patches.size();
+    assert(numPatches != 0);
 
     for (size_t patchIndex = 0; patchIndex < numPatches; patchIndex++)
     {

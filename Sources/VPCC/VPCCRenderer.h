@@ -27,7 +27,10 @@
 #include "QuadRenderer.h"
 #include "HWVideoDecoder.h"
 
-#include "VPCC/VPCCParser80.h"
+#include "VPCC/VPCCParser110.h"
+#include "VPCC/VPCCDecoder110.h"
+
+namespace VPCC = VPCC110;
 
 class VPCCRenderer
 {

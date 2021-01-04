@@ -7,7 +7,7 @@ This software provides an experimental implementation for decoding and AR render
 * Demo application source code
 * Demo content
 
-Note: We currently support only TMC 8.0 version (http://mpegx.int-evry.fr/software/MPEG/PCC/TM/mpeg-pcc-tmc2/tags/release-v8.0) and C2 intra coding conditions (lossy geometry, lossy attributes). The dimensions of the encoded video frames shall not change over an encoded sequence.
+Note: We currently support only TMC 11.0 version (http://mpegx.int-evry.fr/software/MPEG/PCC/TM/mpeg-pcc-tmc2/tags/release-v6.0) and C2 intra coding conditions (lossy geometry, lossy attributes). The dimensions of the encoded video frames shall not change over an encoded sequence.
 
 For more information on V-PCC, please refer to http://www.mpeg-pcc.org
 
@@ -48,5 +48,5 @@ Please see **[LICENSE.TXT](https://github.com/nokiatech/vpcc/blob/master/LICENSE
 
 For more information, please contact: <VPCC.contact@nokia.com>
 
-### Copyright (c) 2018-2020 Nokia Corporation and/or its subsidiary(-ies).
+### Copyright (c) 2018-2021 Nokia Corporation and/or its subsidiary(-ies).
 ### **All rights reserved.** 

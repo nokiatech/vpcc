@@ -20,8 +20,7 @@
 #include <mutex>
 #include <vector>
 
-#include "VPCC/VPCCBitstream80.h"
-#include "VPCC/VPCCParser80.h"
+#include "VPCC/VPCCParser110.h"
 
 #include "VPCC/VPCCRenderer.h"
 
@@ -44,6 +43,8 @@
     #include "HWVideoDecoderDummy.h"
 
 #endif
+
+namespace VPCC = VPCC110;
 
 class VPCCPlayer
 {

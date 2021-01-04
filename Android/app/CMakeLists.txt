@@ -16,48 +16,73 @@ cmake_minimum_required(VERSION 3.4.1)
 
 # Import the ARCore library.
 add_library(arcore SHARED IMPORTED)
+
 set_target_properties(arcore PROPERTIES IMPORTED_LOCATION
-                      ${ARCORE_LIBPATH}/${ANDROID_ABI}/libarcore_sdk_c.so)
+        ${ARCORE_LIBPATH}/${ANDROID_ABI}/libarcore_sdk_c.so)
+
+file(GLOB headers_tmc
+        ../../Sources/External/mpeg-pcc-tmc2/dependencies/nanoflann/*.hpp
+        ../../Sources/External/mpeg-pcc-tmc2/dependencies/nanoflann/*.h
+        ../../Sources/External/mpeg-pcc-tmc2/dependencies/libmd5/*.h
+        ../../Sources/External/mpeg-pcc-tmc2/source/lib/PccLibCommon/include/*.h
+        ../../Sources/External/mpeg-pcc-tmc2/source/lib/PccLibBitstreamCommon/include/*.h
+        ../../Sources/External/mpeg-pcc-tmc2/source/lib/PccLibBitstreamReader/include/*.h)
+
+file(GLOB sources_tmc
+        ../../Sources/External/mpeg-pcc-tmc2/dependencies/libmd5/*.c
+        ../../Sources/External/mpeg-pcc-tmc2/source/lib/PccLibCommon/source/PCCFrameContext.cpp
+        ../../Sources/External/mpeg-pcc-tmc2/source/lib/PccLibCommon/source/PCCContext.cpp
+        ../../Sources/External/mpeg-pcc-tmc2/source/lib/PccLibBitstreamCommon/source/PCCHighLevelSyntax.cpp
+        ../../Sources/External/mpeg-pcc-tmc2/source/lib/PccLibBitstreamCommon/source/PCCBitstream.cpp
+        ../../Sources/External/mpeg-pcc-tmc2/source/lib/PccLibBitstreamReader/source/PCCBitstreamReader.cpp)
+
+include_directories(include_tmc
+        ../../Sources/External/mpeg-pcc-tmc2/dependencies/nanoflann
+        ../../Sources/External/mpeg-pcc-tmc2/dependencies/libmd5
+        ../../Sources/External/mpeg-pcc-tmc2/source/lib/PccLibCommon/include
+        ../../Sources/External/mpeg-pcc-tmc2/source/lib/PccLibBitstreamCommon/include
+        ../../Sources/External/mpeg-pcc-tmc2/source/lib/PccLibBitstreamReader/include)
 
 # This is the main app library.
 add_library(arplayer_native SHARED
-           ${source_tmc}
-           ../../Sources/ARPlayerApplication.cpp
-           ../../Sources/DebugRenderer.cpp
-           ../../Sources/DebugTextRenderer.cpp
-           ../../Sources/GraphicsAPI.cpp
-           ../../Sources/HighResolutionTimer.cpp
-           ../../Sources/HWVideoDecoder.cpp
-           ../../Sources/PassthroughCameraRenderer.cpp
-           ../../Sources/FeaturePointRenderer.cpp
-           ../../Sources/TGA.cpp
-           ../../Sources/Texture2D.cpp
-           ../../Sources/QuadRenderer.cpp
-           ../../Sources/HEVCBitstream.cpp
-           ../../Sources/HEVC.cpp
-           ../../Sources/VPCC/VPCCPlayer.cpp
-           ../../Sources/VPCC/VPCCBitstream80.cpp
-           ../../Sources/VPCC/VPCCParser80.cpp
-           ../../Sources/VPCC/VPCCRenderer.cpp
-           ../../Sources/Android/Logger.cpp
-           ../../Sources/Android/FileSystem.cpp
-           ../../Sources/Android/Surface.cpp
-           ../../Sources/Android/SurfaceTexture.cpp
-           ../../Sources/Android/JNIInterface.cpp
-           ../../Sources/Android/HWVideoDecoderMediaCodec.cpp
-           ../../Sources/Android/ARPlayerApplicationJNI.cpp)
+        ${sources_tmc}
+        ../../Sources/ARPlayerApplication.cpp
+        ../../Sources/DebugRenderer.cpp
+        ../../Sources/DebugTextRenderer.cpp
+        ../../Sources/GraphicsAPI.cpp
+        ../../Sources/HighResolutionTimer.cpp
+        ../../Sources/HWVideoDecoder.cpp
+        ../../Sources/PassthroughCameraRenderer.cpp
+        ../../Sources/FeaturePointRenderer.cpp
+        ../../Sources/TGA.cpp
+        ../../Sources/Texture2D.cpp
+        ../../Sources/QuadRenderer.cpp
+        ../../Sources/HEVCBitstream.cpp
+        ../../Sources/HEVC.cpp
+        ../../Sources/VPCC/VPCCPlayer.cpp
+        ../../Sources/VPCC/VPCCDecoder110.cpp
+        ../../Sources/VPCC/VPCCParser110.cpp
+        ../../Sources/VPCC/VPCCRenderer.cpp
+        ../../Sources/Android/Logger.cpp
+        ../../Sources/Android/FileSystem.cpp
+        ../../Sources/Android/Surface.cpp
+        ../../Sources/Android/SurfaceTexture.cpp
+        ../../Sources/Android/JNIInterface.cpp
+        ../../Sources/Android/HWVideoDecoderMediaCodec.cpp
+        ../../Sources/Android/ARPlayerApplicationJNI.cpp)
 
 target_include_directories(arplayer_native PRIVATE
-                           ../../Sources
-                           ../../Sources/External
-                           ../../Sources/External/glm
-                           ../../Sources/External/STB
-                           ../../Sources/External/ARCore/include)
+        ${include_tmc}
+        ../../Sources
+        ../../Sources/External
+        ../../Sources/External/glm
+        ../../Sources/External/STB
+        ../../Sources/External/ARCore/include)
 
 target_link_libraries(arplayer_native
-                      android
-                      log
-                      EGL
-                      GLESv3
-                      mediandk
-                      arcore)
+        android
+        log
+        EGL
+        GLESv3
+        mediandk
+        arcore)

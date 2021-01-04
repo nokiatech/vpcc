@@ -1,0 +1,3 @@
+#define TMC2_VERSION_MAJOR 11
+#define TMC2_VERSION_MINOR 0
+

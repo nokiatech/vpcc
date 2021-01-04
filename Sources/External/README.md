@@ -16,6 +16,12 @@ URL: https://github.com/g-truc/glm/releases/download/0.9.9.6/glm-0.9.9.6.zip
 Version: 0.9.9.6
 ```
 
+```
+Path: External/mpeg-pcc-tmc2/
+URL: https://github.com/MPEGGroup/mpeg-pcc-tmc2
+Version: 11.0
+```
+
 
 ## Android
 

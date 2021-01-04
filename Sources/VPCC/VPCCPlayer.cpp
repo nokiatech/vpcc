@@ -21,9 +21,6 @@
 #include "Logger.h"
 #include "HighResolutionTimer.h"
 
-#include "VPCC/VPCCParser80.h"
-#include "VPCC/VPCCBitstream80.h"
-
 #if PLATFORM_ANDROID
 
 #include "Android/JNIInterface.h"
@@ -31,7 +28,6 @@
 #endif
 
 #define DEBUG_DUMP_RAW_COMPRESSED_YUV_FRAME 0
-#define DEBUG_VPCC_DECODER 0
 
 namespace
 {
@@ -63,72 +59,6 @@ namespace
 
 /////////////////
 
-#if DEBUG_VPCC_DECODER
-
-#include "PCCCommon.h"
-#include "PCCChrono.h"
-#include "PCCDecoder.h"
-#include "PCCContext.h"
-#include "PCCFrameContext.h"
-#include "PCCBitstream.h"
-#include "PCCGroupOfFrames.h"
-#include "PCCBitstreamDecoder.h"
-#include "PCCDecoderParameters.h"
-
-int decompressVideo(pcc::PCCBitstream& bitstream, const pcc::PCCDecoderParameters& decoderParams/*, const pcc::PCCMetricsParameters& metricsParams*/)
-{
-    if (!bitstream.readHeader())
-    {
-        return -1;
-    }
-
-    size_t frameNumber = decoderParams.startFrameNumber_;
-    std::vector<std::vector<uint8_t>> checksumsRec, checksumsDec;
-
-    pcc::PCCDecoder decoder;
-    decoder.setParameters(decoderParams);
-    
-    pcc::SampleStreamVpccUnit ssvu;
-    pcc::PCCBitstreamDecoder bitstreamDecoder;
-    
-    size_t headerSize = bitstreamDecoder.read( bitstream, ssvu );
-    
-    bool bMoreData = true;
-    int32_t index = 0;
-    
-    while (bMoreData)
-    {
-        pcc::PCCGroupOfFrames reconstructs;
-        pcc::PCCContext context;
-
-        int ret = decoder.decode( ssvu, context, reconstructs );
-
-        if ( ret )
-        {
-            return ret;
-        }
-        
-        bMoreData = ( ssvu.getVpccUnitCount() > 0 );
-    }
-
-    return 0;
-}
-
-int debugDecode(const pcc::PCCDecoderParameters& params, IOBuffer& ioBuffer)
-{
-    pcc::PCCBitstream bitstream;
-    bitstream.initialize(ioBuffer.data, ioBuffer.size);
-
-    pcc::PCCDecoderParameters decoderParams;
-    int ret = decompressVideo(bitstream, decoderParams/*, metricsParams, clockUser*/);
-
-    return ret;
-}
-
-#endif
-
-///////////////////
-
 VPCCPlayer::Config VPCCPlayer::_config;
 
 void VPCCPlayer::threadEntry(VPCCPlayer* player)
@@ -140,27 +70,18 @@ void VPCCPlayer::threadEntry(VPCCPlayer* player)
 #endif
 
     // Read whole file to memory buffer
-    IOBuffer ioBuffer = FileSystem::loadFromDisk(player->_filename);
-    assert(ioBuffer.data != NULL);
+    IOBuffer buffer = FileSystem::loadFromDisk(player->_filename);
+    assert(buffer.data != NULL);
 
-    if (ioBuffer.size == 0)
+    if (buffer.size == 0)
     {
         return;
     }
-
-    VPCC::Bitstream bitstream(ioBuffer.data, ioBuffer.size);
-
-    VPCC::TMC2Header header;
-
-    if (!VPCC::parseContainerHeader(bitstream, header))
-    {
-        return;
-    }
-
-    // Parse all frame groups at once
+    
     PlaybackContext& playbackContext = player->_playbackContext;
 
-    bool result = VPCC::parseAllFrameGroups(bitstream, playbackContext.frameGroups);
+    // Parse all frame groups at once
+    bool result = VPCC::parseAllFrameGroups(buffer, playbackContext.frameGroups);
     
     if (!result)
     {
@@ -353,10 +274,10 @@ void VPCCPlayer::initializeVideoDecoder(VPCC::VideoStream& stream, HWVideoDecode
 VPCCPlayer::Result::Enum VPCCPlayer::open(std::string filename)
 {
     // Read file
-    IOBuffer ioBuffer = FileSystem::loadFromDisk(filename);
-    assert(ioBuffer.data != NULL);
+    IOBuffer buffer = FileSystem::loadFromDisk(filename);
+    assert(buffer.data != NULL);
 
-    if (ioBuffer.size == 0)
+    if (buffer.size == 0)
     {
         LOG_E("File (%s) not found", filename.c_str());
 
@@ -365,70 +286,51 @@ VPCCPlayer::Result::Enum VPCCPlayer::open(std::string filename)
 
     LOG_I("File (%s) loaded", filename.c_str());
 
-#if DEBUG_VPCC_DECODER
-
-    pcc::PCCDecoderParameters params;
-    debugDecode(params, ioBuffer);
-
-#endif
-
     _filename = filename;
-
+    
     // Parse first frame group to get decoder config parameters
-    VPCC::Bitstream bitstream(ioBuffer.data, ioBuffer.size);
+    VPCC::FrameGroup frameGroup;
 
-    VPCC::TMC2Header header;
-
-    if (VPCC::parseContainerHeader(bitstream, header))
+    if (VPCC::parseFirstFrameGroup(buffer, frameGroup))
     {
-        VPCC::FrameGroup frameGroup;
+        IOBuffer::free(&buffer);
 
-        if (VPCC::parseFirstFrameGroup(bitstream, frameGroup))
+        bool dualLayer = false;
+
+        if (frameGroup.videoStream[VPCC::VideoType::GEOMETRY].packets.size() > 0)
         {
-            IOBuffer::free(&ioBuffer);
-
-            bool dualLayer = false;
-
-            if (frameGroup.videoStream[VPCC::VideoType::GEOMETRY].packets.size() > 0)
-            {
-                dualLayer = (frameGroup.videoStream[VPCC::VideoType::OCCUPANCY].packets.size() * 2 == frameGroup.videoStream[VPCC::VideoType::GEOMETRY].packets.size());
-            }
-            else
-            {
-                dualLayer = (frameGroup.videoStream[VPCC::VideoType::OCCUPANCY].packets.size() * 2 == frameGroup.videoStream[VPCC::VideoType::GEOMETRY_D0].packets.size() &&
-                             frameGroup.videoStream[VPCC::VideoType::OCCUPANCY].packets.size() * 2 == frameGroup.videoStream[VPCC::VideoType::GEOMETRY_D1].packets.size());
-            }
-
-            if (dualLayer)
-            {
-                LOG_E("Dual-layer file format is not supported! (%s)", filename.c_str());
-
-                return VPCCPlayer::Result::RESULT_ERROR;
-            }
-
-            ////////////////////////////////////////////////////////////////////////////
-            ///
-            /// Note: E.g. Android AMediaCodec needs to be inialized from UI/rendering thread
-            ///
-            ////////////////////////////////////////////////////////////////////////////
-            for (size_t i = 0; i < VPCC::VideoType::COUNT; ++i)
-            {
-                HWVideoDecoder& decoder = _playbackContext.getDecoderByType((VPCC::VideoType::Enum)i);
-                VPCC::VideoStream& stream = frameGroup.videoStream[i];
-
-                if (stream.type != VPCC::VideoType::INVALID)
-                {
-                    initializeVideoDecoder(stream, decoder);
-                }
-            }
-
-            _state = State::INITIALIZED;
-
-            return VPCCPlayer::Result::RESULT_OK;
+            dualLayer = (frameGroup.videoStream[VPCC::VideoType::OCCUPANCY].packets.size() * 2 == frameGroup.videoStream[VPCC::VideoType::GEOMETRY].packets.size());
         }
+
+        if (dualLayer)
+        {
+            LOG_E("Dual-layer file format is not supported! (%s)", filename.c_str());
+
+            return VPCCPlayer::Result::RESULT_ERROR;
+        }
+
+        ////////////////////////////////////////////////////////////////////////////
+        ///
+        /// Note: E.g. Android AMediaCodec needs to be inialized from UI/rendering thread
+        ///
+        ////////////////////////////////////////////////////////////////////////////
+        for (size_t i = 0; i < VPCC::VideoType::COUNT; ++i)
+        {
+            HWVideoDecoder& decoder = _playbackContext.getDecoderByType((VPCC::VideoType::Enum)i);
+            VPCC::VideoStream& stream = frameGroup.videoStream[i];
+
+            if (stream.type != VPCC::VideoType::INVALID)
+            {
+                initializeVideoDecoder(stream, decoder);
+            }
+        }
+
+        _state = State::INITIALIZED;
+
+        return VPCCPlayer::Result::RESULT_OK;
     }
 
-    IOBuffer::free(&ioBuffer);
+    IOBuffer::free(&buffer);
 
     return VPCCPlayer::Result::RESULT_ERROR;
 }
