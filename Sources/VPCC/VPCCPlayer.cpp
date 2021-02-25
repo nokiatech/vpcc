@@ -81,7 +81,7 @@ void VPCCPlayer::threadEntry(VPCCPlayer* player)
     PlaybackContext& playbackContext = player->_playbackContext;
 
     // Parse all frame groups at once
-    bool result = VPCC::parseAllFrameGroups(buffer, playbackContext.frameGroups);
+    bool result = VPCC::parseFrameGroups(buffer, playbackContext.frameGroups, false);
     
     if (!result)
     {
@@ -289,13 +289,15 @@ VPCCPlayer::Result::Enum VPCCPlayer::open(std::string filename)
     _filename = filename;
     
     // Parse first frame group to get decoder config parameters
-    VPCC::FrameGroup frameGroup;
+    std::vector<VPCC::FrameGroup> frameGroups;
 
-    if (VPCC::parseFirstFrameGroup(buffer, frameGroup))
+    if (VPCC::parseFrameGroups(buffer, frameGroups, true))
     {
         IOBuffer::free(&buffer);
 
         bool dualLayer = false;
+        
+        VPCC::FrameGroup& frameGroup = frameGroups.at(0);
 
         if (frameGroup.videoStream[VPCC::VideoType::GEOMETRY].packets.size() > 0)
         {

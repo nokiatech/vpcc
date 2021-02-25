@@ -20,7 +20,7 @@
 #include <mutex>
 #include <vector>
 
-#include "VPCC/VPCCParser110.h"
+#include "VPCC/VPCCParser121.h"
 
 #include "VPCC/VPCCRenderer.h"
 
@@ -44,7 +44,7 @@
 
 #endif
 
-namespace VPCC = VPCC110;
+namespace VPCC = VPCC121;
 
 class VPCCPlayer
 {

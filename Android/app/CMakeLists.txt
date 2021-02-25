@@ -60,8 +60,8 @@ add_library(arplayer_native SHARED
         ../../Sources/HEVCBitstream.cpp
         ../../Sources/HEVC.cpp
         ../../Sources/VPCC/VPCCPlayer.cpp
-        ../../Sources/VPCC/VPCCDecoder110.cpp
-        ../../Sources/VPCC/VPCCParser110.cpp
+        ../../Sources/VPCC/VPCCDecoder121.cpp
+        ../../Sources/VPCC/VPCCParser121.cpp
         ../../Sources/VPCC/VPCCRenderer.cpp
         ../../Sources/Android/Logger.cpp
         ../../Sources/Android/FileSystem.cpp

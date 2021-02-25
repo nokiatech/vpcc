@@ -183,6 +183,7 @@ namespace HEVC
         if (_bitmask != INITIAL_BITMASK)
         {
             _bitmask = INITIAL_BITMASK;
+            
             _position++;
             _position = Math::clamp<size_t>(_position, 0, _length);
         }
