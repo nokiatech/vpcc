@@ -582,6 +582,11 @@ void ARPlayerApplication::drawVPCC()
             {
                 _spriteRenderer.draw(_emptyCacheIcon, glm::vec2(0.0f, 2000.0f), glm::vec2(200.0f, 200.0f), 0.0f, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
             }
+
+            glm::vec4 textColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+            glm::vec4 backgroundColor = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
+            
+            _debugTextRenderer.printFormat(glm::vec2(1.0f, 11.0f), textColor, backgroundColor, "Loading & parsing...");
         }
     }
 

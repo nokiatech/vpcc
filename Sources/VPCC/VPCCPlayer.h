@@ -20,7 +20,7 @@
 #include <mutex>
 #include <vector>
 
-#include "VPCC/VPCCParser121.h"
+#include "VPCC/VPCCParser130.h"
 
 #include "VPCC/VPCCRenderer.h"
 
@@ -44,7 +44,7 @@
 
 #endif
 
-namespace VPCC = VPCC121;
+namespace VPCC = VPCC130;
 
 class VPCCPlayer
 {
@@ -72,6 +72,22 @@ public:
     {
         bool manualVideoTextureUpload = false;
     };
+    
+    struct State
+    {
+        enum Enum
+        {
+            INVALID = -1,
+
+            INITIALIZED,
+            PLAYING,
+            STOPPED,
+            PAUSED,
+            SHUTDOWN,
+
+            COUNT
+        };
+    };
 
 public:
 
@@ -89,6 +105,8 @@ public:
     Result::Enum resume();
 
     void restart();
+    
+    State::Enum GetState();
 
     Result::Enum fetchPresentationFrame(VPCCRenderer::PresentationFrame& presentationFrame);
 
@@ -98,22 +116,6 @@ private:
 
     std::string _filename;
     std::thread* _thread;
-
-    struct State
-    {
-        enum Enum
-        {
-            INVALID = -1,
-
-            INITIALIZED,
-            PLAYING,
-            STOPPED,
-            PAUSED,
-            SHUTDOWN,
-
-            COUNT
-        };
-    };
 
     State::Enum _state = State::INVALID;
 

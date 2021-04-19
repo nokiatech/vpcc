@@ -12,9 +12,9 @@
 * written consent of Nokia.
 */
 
-#include "VPCC/VPCCParser121.h"
-#include "VPCC/VPCCDecoder121.h"
-#include "VPCC/VPCCDatatypes121.h"
+#include "VPCC/VPCCParser130.h"
+#include "VPCC/VPCCDecoder130.h"
+#include "VPCC/VPCCDatatypes130.h"
 
 #include <cmath>
 #include <assert.h>
@@ -33,12 +33,10 @@
 #include "PCCGroupOfFrames.h"
 #include "PCCBitstreamReader.h"
 
-namespace VPCC121
+namespace VPCC130
 {
     void dumpVideoStream(uint8_t* buffer, size_t bufferSize, VideoType::Enum type)
     {
-#if 0 // DEBUG
-
         // Dump encoded YUV sequence
         std::string outputPath;
 
@@ -52,8 +50,6 @@ namespace VPCC121
         counter++;
 
         FileSystem::saveToDisk(outputPath.c_str(), buffer, bufferSize);
-
-#endif
     }
 
     void createVideoPackets(uint8_t* buffer, size_t bufferSize, std::vector<VideoFramePacket>& packets, VideoType::Enum type)
@@ -135,6 +131,11 @@ namespace VPCC121
 
     void parseVideoStream(pcc::PCCVideoBitstream& videoBitstream, FrameGroup& frameGroup)
     {
+        if (true /*byteStreamVideoCoder*/) // Encoder defaults to this since TMC 13.0...
+        {
+            videoBitstream.sampleStreamToByteStream();
+        }
+        
         uint8_t* buffer = videoBitstream.buffer();
         size_t bufferSize = videoBitstream.size();
         
@@ -255,7 +256,7 @@ namespace VPCC121
         
         pcc::SampleStreamV3CUnit ssvu;
         pcc::PCCBitstreamReader bitstreamReader;
-        size_t headerSize = pcc::PCCBitstreamReader::read(bitstream, ssvu);
+        size_t headerSize = pcc::PCCBitstreamReader::read(bitstream, ssvu); // Read V3C units
         
         bitstreamStat.incrHeader(headerSize);
         
@@ -278,17 +279,17 @@ namespace VPCC121
         
         frameGroups.resize(frameGroupCount);
         
-        bool bytesAvailable = true;
+        bool dataAvailable = true;
         int32_t frameGroupIndex = 0;
         
-        while (bytesAvailable)
+        while (dataAvailable)
         {
             pcc::PCCContext context;
             context.setBitstreamStat(bitstreamStat);
             
             pcc::PCCBitstreamReader bitstreamReader;
             
-            if (bitstreamReader.decode(ssvu, context) == 0)
+            if (bitstreamReader.decode(ssvu, context) == 0) // Parse V3C units
             {
                 return false;
             }
@@ -301,7 +302,7 @@ namespace VPCC121
                 context.getAtlas(atlasIndex).allocateVideoFrames(context, 0);
                 context.setAtlasIndex(atlasIndex);
                 
-                int32_t result = decode(&context, atlasIndex);
+                int32_t result = decodePatches(&context, atlasIndex);
                 
                 if (result != 0)
                 {
@@ -312,13 +313,13 @@ namespace VPCC121
                 FrameGroup& frameGroup = frameGroups.at(frameGroupIndex);
                 preprocess(context, frameGroup);
 
-                bytesAvailable = (ssvu.getV3CUnitCount() > 0);
+                dataAvailable = (ssvu.getV3CUnitCount() > 0);
                 
                 frameGroupIndex++;
                 
                 if (firstOnly)
                 {
-                    bytesAvailable = false;
+                    dataAvailable = false;
                     
                     break;
                 }

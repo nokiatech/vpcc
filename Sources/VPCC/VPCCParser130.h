@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "VPCC/VPCCDatatypes121.h"
+#include "VPCC/VPCCDatatypes130.h"
 
 #include "FileSystem.h"
 
-namespace VPCC121
+namespace VPCC130
 {
     bool parseFrameGroups(IOBuffer& buffer, std::vector<FrameGroup>& frameGroups, bool firstOnly = false);
 }

@@ -14,16 +14,16 @@
 
 #pragma once
 
-#include "VPCC/VPCCDatatypes121.h"
+#include "VPCC/VPCCDatatypes130.h"
 
 namespace pcc
 {
     class PCCContext;
 }
 
-namespace VPCC121
+namespace VPCC130
 {
-    int decode(pcc::PCCContext* context, int32_t atlasIndex);
+    int decodePatches(pcc::PCCContext* context, int32_t atlasIndex);
 
     // Needed in GPU rendering
     int32_t patchBlockToCanvasBlock(Patch& patch, const size_t blockU, const size_t blockV, size_t canvasStrideBlock, size_t canvasHeightBlock);

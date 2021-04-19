@@ -44,10 +44,10 @@ public class ARPlayerActivity
   private GLSurfaceView surfaceView;
 
   private boolean viewportChanged = false;
-  private int viewportWidth;
-  private int viewportHeight;
+  private int viewportWidth = 0;
+  private int viewportHeight = 0;
 
-  private long nativeApplication;
+  private long nativeApplication = 0;
 
   private GestureDetector gestureDetector;
   private ScaleGestureDetector scaleDetector;

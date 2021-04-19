@@ -238,6 +238,8 @@ VPCCPlayer::Result::Enum VPCCPlayer::shutdown()
 
     // Release retained frame
     releasePresentationFrame(_presentationFrame);
+    
+    _state = State::INVALID;
 
     return VPCCPlayer::Result::RESULT_OK;
 }
@@ -470,6 +472,11 @@ void VPCCPlayer::restart()
         _playbackContext.outputEOS = false;
     }
     _playbackContext.mutex.unlock();
+}
+
+VPCCPlayer::State::Enum VPCCPlayer::GetState()
+{
+    return _state;
 }
 
 VPCCPlayer::Result::Enum VPCCPlayer::fetchPresentationFrame(VPCCRenderer::PresentationFrame& presentationFrame)

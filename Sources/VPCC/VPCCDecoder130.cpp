@@ -12,7 +12,7 @@
 * written consent of Nokia.
 */
 
-#include "VPCC/VPCCDecoder121.h"
+#include "VPCC/VPCCDecoder130.h"
 
 #include <cmath>
 #include <cstddef>
@@ -41,9 +41,9 @@
 
 using namespace pcc;
 
-namespace VPCC121
+namespace VPCC130
 {
-    int decode(PCCContext& context, int32_t atlasIndex);
+    int decodePatches(PCCContext& context, int32_t atlasIndex);
 
     void generateBlockToPatchFromBoundaryBox(PCCContext& context, PCCFrameContext& frame, const size_t occupancyResolution);
     void generateBlockToPatchFromBoundaryBox(PCCContext& context, const size_t occupancyResolution);
@@ -144,12 +144,12 @@ namespace VPCC121
         return (x + canvasStrideBlock * y);
     }
 
-    int decode(PCCContext* context, int32_t atlasIndex)
+    int decodePatches(PCCContext* context, int32_t atlasIndex)
     {
-        return decode(*context, atlasIndex);
+        return decodePatches(*context, atlasIndex);
     }
 
-    int decode(PCCContext& context, int32_t atlasIndex)
+    int decodePatches(PCCContext& context, int32_t atlasIndex)
     {
         createPatchFrameDataStructure(context);
         
@@ -299,20 +299,20 @@ namespace VPCC121
             const size_t bottomRightPartitionColumn = topLeftPartitionColumn + afti.getBottomRightPartitionColumnOffset(tileIndex);
             const size_t bottomRightPartitionRow = topLeftPartitionRow + afti.getBottomRightPartitionRowOffset(tileIndex);
 
-            size_t tileStartX = atlasFrameContext.getPartitionPosX().at(topLeftPartitionColumn);
-            size_t tileStartY = atlasFrameContext.getPartitionPosY().at(topLeftPartitionRow);
+            size_t tileStartX = atlasFrameContext.getPartitionPosX(topLeftPartitionColumn);
+            size_t tileStartY = atlasFrameContext.getPartitionPosY(topLeftPartitionRow);
             
             size_t tileWidth = 0;
             size_t tileHeight = 0;
             
             for (size_t j = topLeftPartitionColumn; j <= bottomRightPartitionColumn; j++)
             {
-                tileWidth += atlasFrameContext.getPartitionWidth().at(j);
+                tileWidth += atlasFrameContext.getPartitionWidth(j);
             }
             
             for (size_t j = topLeftPartitionRow; j <= bottomRightPartitionRow; j++)
             {
-                tileHeight += atlasFrameContext.getPartitionHeight().at(j);
+                tileHeight += atlasFrameContext.getPartitionHeight(j);
             }
             
             tile.setLeftTopXInFrame(tileStartX);
@@ -602,7 +602,7 @@ namespace VPCC121
                 rawPointsPatch.sizeU0_ = rpdu.get2dSizeXMinus1() + 1;
                 rawPointsPatch.sizeV0_ = rpdu.get2dSizeYMinus1() + 1;
                 
-                if (afps.getRaw3dPosBitCountExplicitModeFlag())
+                if (afps.getRaw3dOffsetBitCountExplicitModeFlag())
                 {
                     rawPointsPatch.u1_ = rpdu.get3dOffsetU();
                     rawPointsPatch.v1_ = rpdu.get3dOffsetV();

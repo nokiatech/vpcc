@@ -24,7 +24,7 @@
 #include "Helpers.h"
 #include "HEVC.h"
 
-namespace VPCC121
+namespace VPCC130
 {
     // Data structures for rendering
     struct PatchOrientation
