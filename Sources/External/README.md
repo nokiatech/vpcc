@@ -19,7 +19,7 @@ Version: 0.9.9.6
 ```
 Path: External/mpeg-pcc-tmc2/
 URL: https://github.com/MPEGGroup/mpeg-pcc-tmc2
-Version: 11.0
+Version: 13.0
 ```
 
 
